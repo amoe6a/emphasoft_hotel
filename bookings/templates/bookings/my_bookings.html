@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Your Reservations</h2>
+    <ul>
+    {% for booking in bookings %}
+        <li>
+            {{ booking.room.name }} from {{ booking.start_date }} to {{ booking.end_date }}
+            <a href="{% url 'cancel_booking' booking.pk %}">Cancel Booking</a>
+        </li>
+    {% empty %}
+        <li>You haven't made any bookings yet!</li>
+    {% endfor %}
+    </ul>
+{% endblock %}

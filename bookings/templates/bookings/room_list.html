@@ -1,0 +1,9 @@
+<ul>
+{% for room in rooms %}
+    <li>
+        {{ room.name }} - {{ room.price }} - {{ room.capacity }} guests
+    </li>
+{% empty %}
+    <li>No rooms available.</li>
+{% endfor %}
+</ul>

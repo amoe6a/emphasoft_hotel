@@ -1,0 +1,23 @@
+[project]
+name = "djangohotel"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0.2",
+    "django-filter>=25.2",
+    "djangorestframework>=3.16.1",
+    "gunicorn>=25.1.0",
+    "psycopg2-binary>=2.9.11",
+    "python-dotenv>=1.2.2",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "django-debug-toolbar>=6.2.0",
+]
+prod = [
+    "gunicorn>=25.1.0",
+]
