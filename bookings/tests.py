@@ -37,7 +37,7 @@ class RoomFilterTest(TestCase):
     def test_filter_by_price_range(self):
         # Testing 'price_per_night': ['lte', 'gte']
         # Looking for rooms between 1200 and 1800
-        data = {"price_per_night__gte": 1200, "price_per_night__lte": 1800}
+        data = {"min_price": 1200, "max_price": 1800}
         response = self.client.get(reverse(self.url), data)
         self.assertEqual(len(response.context["rooms"]), 1)
         self.assertEqual(response.context["rooms"][0].name, "103")
