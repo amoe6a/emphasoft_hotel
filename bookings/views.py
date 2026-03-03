@@ -12,7 +12,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializers import RoomSerializer, BookingSerializer
 
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
 from .filters import RoomFilter
+from datetime import date
 
 
 def register(request) -> HttpResponse:
@@ -28,6 +31,28 @@ def register(request) -> HttpResponse:
     return render(request, "registration/register.html", {"form": form})
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="min_price",
+            type=float,
+            description="Filter by minimum price per night",
+        ),
+        OpenApiParameter(
+            name="max_price",
+            type=float,
+            description="Filter by maximum price per night",
+        ),
+        OpenApiParameter(
+            name="start_date", type=date, description="Filter by start_date"
+        ),
+        OpenApiParameter(
+            name="end_date", type=date, description="Filter by availability end_date"
+        ),
+    ],
+    responses={200: RoomSerializer(many=True)},
+    description="Search for available rooms within a price range and specific dates.",
+)
 @api_view(["GET"])
 def room_list_api(request) -> Response:
     rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
@@ -44,6 +69,11 @@ def room_list(request) -> HttpResponse:
     )
 
 
+@extend_schema(
+    request=BookingSerializer,
+    responses={201: BookingSerializer},
+    description="Allows authenticated user to book a room. Requires room id and date range.",
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def book_room_api(request) -> Response:
@@ -73,6 +103,11 @@ def book_room(request, room_id=None) -> HttpResponse:
     return render(request, "bookings/book_room.html", {"form": form})
 
 
+@extend_schema(
+    responses={200: BookingSerializer(many=True)},
+    description="Retrieves a list of all bookings made by the currently authenticated user.",
+    tags=["User Bookings"],
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_bookings_api(request) -> Response:
@@ -87,6 +122,18 @@ def my_bookings(request) -> HttpResponse:
     return render(request, "bookings/my_bookings.html", {"bookings": user_bookings})
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="pk",
+            description="The unique ID of the booking to cancel",
+            type=int,
+            location=OpenApiParameter.PATH,
+        )
+    ],
+    responses={204: None},
+    description="Deletes a booking record. Users can only delete their own bookings.",
+)
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def cancel_booking_api(request, pk) -> Response:
