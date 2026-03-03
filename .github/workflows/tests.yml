@@ -7,11 +7,41 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Using the latest stable version for 2026
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: emphasoft_hotel_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
         python-version: "3.12"
-    - run: pip install uv
-    - run: uv sync
-    - run: uv run python manage.py test
+
+    - name: Install uv
+      run: pip install uv
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Run tests
+      env:
+        # Using your custom DB name in the connection string
+        DATABASE_URL: "postgres://postgres:postgres@localhost:5432/emphasoft_hotel_db"
+        SECRET_KEY: "testingsecretkey_for_github_actions"
+        DEBUG: "True"
+      run: uv run python manage.py test
