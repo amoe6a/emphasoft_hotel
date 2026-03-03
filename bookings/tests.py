@@ -60,3 +60,79 @@ class RoomFilterTest(TestCase):
         with self.assertRaises(ValidationError):
             rooms_filter = RoomFilter(data, queryset=Room.objects.all())
             rooms_filter.qs
+
+    def test_book_room_success(self):
+        self.client.login(username="testuser", password="password")
+        data = {
+            "room": self.room_small.id,
+            "start_date": "2026-05-10",
+            "end_date": "2026-05-15",
+        }
+        response = self.client.post(reverse("book_room"), data)
+        # Expect a redirect (status code 302) back to the room list
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("room_list"))
+
+        self.assertEqual(Booking.objects.count(), 2)
+
+    def test_prevent_double_booking(self):
+        # Create a booking
+        Booking.objects.create(
+            user=self.user,
+            room=self.room_small,
+            start_date="2026-05-01",
+            end_date="2026-05-05",
+        )
+        self.client.login(username="testuser", password="password")
+
+        overlap_data = {
+            "room": self.room_small.id,
+            "start_date": "2026-05-04",
+            "end_date": "2026-05-07",
+        }
+        # create an overlapping booking
+        response = self.client.post(reverse("book_room"), overlap_data)
+
+        # django will give 200 and stay on the same page
+        self.assertEqual(response.status_code, 200)
+        # Expect the exact error message from clean()
+        errors = response.context["form"].non_field_errors()
+        print(errors)
+        self.assertIsNotNone(errors)
+        # Ensure no new booking was created
+        print([[b.room, b.start_date, b.end_date] for b in Booking.objects.all()])
+        self.assertEqual(Booking.objects.count(), 2)
+
+    def test_booking_requires_login(self):
+        # Ensure we are not logged in
+        self.client.logout()
+        # Try access the booking page
+        response = self.client.get(reverse("book_room"))
+        # Verify the redirect
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response.url)
+
+    def test_cannot_cancel_others_booking(self):
+        other_user = User.objects.create_user(
+            username="intruder", password="password123"
+        )
+
+        # 2. Create a booking belonging to second user
+        others_booking = Booking.objects.create(
+            user=other_user,
+            room=self.room_mid,
+            start_date="2026-06-01",
+            end_date="2026-06-05",
+        )
+
+        # Log in as the FIRST user (testuser)
+        self.client.login(username="testuser", password="password")
+
+        url = reverse("cancel_booking", kwargs={"pk": others_booking.pk})
+        response = self.client.post(url)
+
+        # Verify the security block
+        self.assertEqual(response.status_code, 404)
+
+        # Booking should still exist
+        self.assertTrue(Booking.objects.filter(pk=others_booking.pk).exists())
