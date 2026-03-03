@@ -8,6 +8,7 @@ class RoomAdmin(admin.ModelAdmin):
 
 class BookingAdmin(admin.ModelAdmin):
     list_filter = ("start_date", "room")
+    list_display = ("room__name", "start_date", "end_date")
 
 
 admin.site.register(Room, RoomAdmin)

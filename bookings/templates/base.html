@@ -2,8 +2,24 @@
   <body>
     <nav>
         <h1>Emphasoft Hotel</h1>
-        <a href="{% url 'room_list' %}">Rooms</a>
-        <a href="{% url 'my_bookings' %}">My Bookings</a>
+        <div style="margin-bottom: 5px; display: flex;">
+          {% if user.is_authenticated %}
+            <span>Welcome, {{ user.username }}</span>
+            
+            <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit">Logout</button>
+            </form>
+          {% else %}
+              <a href="{% url 'login' %}">Login</a> - 
+			  <a href="{% url 'register' %}">Register</a>
+          {% endif %}
+        </div>
+        <div style="display: flex;">
+          <a href="{% url 'room_list' %}">Rooms</a> - 
+          <a href="{% url 'book_room' %}">Book</a> - 
+          <a href="{% url 'my_bookings' %}">My Bookings</a>
+        </div>
     </nav>
     {% if messages %}
     <div class="messages-container">
