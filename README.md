@@ -28,7 +28,7 @@ We recommend using [`uv`](https://github.com/astral-sh/uv) for lightning-fast pa
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/amoe6a/emphasoft_hotel.git](https://github.com/amoe6a/emphasoft_hotel.git)
+git clone https://github.com/amoe6a/emphasoft_hotel.git
 cd emphasoft_hotel
 
 ### 2. Dependencies
