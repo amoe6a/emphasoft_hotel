@@ -9,6 +9,7 @@ dependencies = [
     "django>=6.0.2",
     "django-filter>=25.2",
     "djangorestframework>=3.16.1",
+    "drf-spectacular>=0.29.0",
     "gunicorn>=25.1.0",
     "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.2.2",
@@ -18,6 +19,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "django-debug-toolbar>=6.2.0",
+    "pre-commit>=4.5.1",
+    "ruff>=0.15.4",
 ]
 prod = [
     "gunicorn>=25.1.0",

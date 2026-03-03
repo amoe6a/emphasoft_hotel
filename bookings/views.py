@@ -14,30 +14,31 @@ from .serializers import RoomSerializer, BookingSerializer
 from .filters import RoomFilter
 
 
-
 def register(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = UserCreationForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Account created.')
-            return redirect('login')
+            messages.success(request, "Account created.")
+            return redirect("login")
     else:
         form = UserCreationForm()
-    return render(request, 'registration/register.html', {'form': form})
+    return render(request, "registration/register.html", {"form": form})
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 def room_list_api(request):
     rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
     serilized_rooms = RoomSerializer(rooms_filtered.qs, many=True)
     return Response(serilized_rooms.data)
 
+
 def room_list(request):
     rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
-    return render(request, 'bookings/room_list.html', {'rooms': rooms_filtered.qs})
+    return render(request, "bookings/room_list.html", {"rooms": rooms_filtered.qs})
 
-@api_view(['POST'])
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def book_room_api(request):
     serialized_booking = BookingSerializer(data=request.data)
@@ -48,38 +49,42 @@ def book_room_api(request):
 
 
 def book_room(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = BookingForm(request.POST)
         if form.is_valid():
             booking = form.save(commit=False)
             booking.user = request.user
             booking.save()
             messages.success(request, "Your room is booked!")
-            return redirect('room_list')
+            return redirect("room_list")
     else:
         form = BookingForm()
-    return render(request, 'bookings/book_room.html', {'form': form})
+    return render(request, "bookings/book_room.html", {"form": form})
 
-@api_view(['GET'])
-@permission_classes(IsAuthenticated)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def my_bookings_api(request):
     bookings = Booking.objects.filter(user=request.user)
     serialized_bookings = BookingSerializer(bookings, many=True)
     return Response(serialized_bookings.data)
 
+
 @login_required
 def my_bookings(request):
     user_bookings = Booking.objects.filter(user=request.user)
-    return render(request, 'bookings/my_bookings.html', {'bookings': user_bookings})
+    return render(request, "bookings/my_bookings.html", {"bookings": user_bookings})
 
-@api_view(['DELETE'])
+
+@api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def cancel_booking_api(request, pk):
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
     booking.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 def cancel_booking(request, pk):
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
     booking.delete()
-    return redirect('my_bookings')
+    return redirect("my_bookings")

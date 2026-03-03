@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bookings', '0003_rename_bookings_booking'),
+        ("bookings", "0003_rename_bookings_booking"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='room',
-            name='is_empty',
+            model_name="room",
+            name="is_empty",
             field=models.BooleanField(default=True),
         ),
     ]
