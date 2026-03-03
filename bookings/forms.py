@@ -12,13 +12,16 @@ class BookingForm(forms.ModelForm):
             "end_date": forms.DateInput(attrs={"type": "date"}),
         }
 
-    def clean(self):
+    def clean(self) -> dict:
         cleaned_data = super().clean()
         room = cleaned_data.get("room")
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
 
         if room and start_date and end_date:
+            if start_date > end_date:
+                raise ValidationError("Invalid dates range")
+
             time_clashes = Booking.objects.filter(
                 room=room, start_date__lte=end_date, end_date__gte=start_date
             )

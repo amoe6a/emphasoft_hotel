@@ -121,3 +121,4 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 LOGIN_REDIRECT_URL = "room_list"
+LOGOUT_REDIRECT_URL = "room_list"

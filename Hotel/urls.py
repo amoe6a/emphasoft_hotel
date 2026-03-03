@@ -22,7 +22,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("bookings/", include("bookings.urls")),
-    path("account/", include("django.contrib.auth.urls")),
+    path("accounts/", include("django.contrib.auth.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
@@ -30,3 +30,5 @@ urlpatterns = [
         name="swagger-ui",
     ),
 ]
+
+handler404 = "django.views.defaults.page_not_found"

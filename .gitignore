@@ -12,3 +12,4 @@ wheels/
 .env
 .python-version
 .uv
+staticfiles/

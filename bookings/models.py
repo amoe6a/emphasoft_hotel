@@ -20,5 +20,5 @@ class Booking(models.Model):
     end_date = models.DateField()
 
     @property
-    def total_price(self):
+    def total_price(self) -> models.DecimalField:
         return self.room.price_per_night * (self.end_date - self.start_date).days

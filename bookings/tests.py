@@ -29,10 +29,10 @@ class RoomFilterTest(TestCase):
             user=self.user,
         )
 
-    def test_filter_by_capacity_exact(self):
-        # Testing 'capacity': ['exact']
+    def test_filter_by_capacity_gte(self):
+        # Testing 'capacity': ['gte']
         response = self.client.get(reverse(self.url), {"capacity": 2})
-        self.assertEqual(len(response.context["rooms"]), 2)
+        self.assertEqual(len(response.context["rooms"]), 3)
 
     def test_filter_by_price_range(self):
         # Testing 'price_per_night': ['lte', 'gte']

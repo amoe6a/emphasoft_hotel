@@ -1,13 +1,50 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <h2>Available Rooms</h2>
+    
+    <form method="get" class="filter-form">
+        <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+            <div>
+                <label>Arrival</label><br>
+                {{ filter.form.start_date }}
+            </div>
+            <div>
+                <label>Departure</label><br>
+                {{ filter.form.end_date }}
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 20px; margin-bottom: 20px; align-items: flex-end;">
+            <div>
+                <label>Guests</label><br>
+                {{ filter.form.capacity__gte }}
+            </div>
+            <div>
+                <label>Price Range</label><br>
+                {{ filter.form.min_price }} - {{ filter.form.max_price }}
+            </div>
+            <div>
+                <label>Sort By</label><br>
+                {{ filter.form.ordering_filter }}
+            </div>
+            <div>
+                <button type="submit">Search</button>
+                <a href="{% url 'room_list' %}">Reset</a>
+            </div>
+        </div>
+    </form>
+
+    <hr>
+
     <ul>
     {% for room in rooms %}
         <li>
-            {{ room.name }} - {{ room.price }} - {{ room.capacity }} guests
+            <strong>{{ room.name }}</strong> - price: {{ room.price_per_night }} - max {{ room.capacity }} guests
+            <a href="{% url 'book_room_with_given_room_id' room.id %}">Book Now</a>
         </li>
     {% empty %}
-        <li>No rooms available.</li>
+        <li>No rooms found matching your criteria.</li>
     {% endfor %}
     </ul>
 {% endblock %}

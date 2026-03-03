@@ -4,6 +4,7 @@ from django.contrib import messages
 from .models import Room, Booking
 from .forms import BookingForm
 from django.contrib.auth.forms import UserCreationForm
+from django.http import HttpResponse, HttpResponseRedirect
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -14,7 +15,7 @@ from .serializers import RoomSerializer, BookingSerializer
 from .filters import RoomFilter
 
 
-def register(request):
+def register(request) -> HttpResponse:
     if request.method == "POST":
         form = UserCreationForm(request.POST)
         if form.is_valid():
@@ -28,20 +29,24 @@ def register(request):
 
 
 @api_view(["GET"])
-def room_list_api(request):
+def room_list_api(request) -> Response:
     rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
     serilized_rooms = RoomSerializer(rooms_filtered.qs, many=True)
     return Response(serilized_rooms.data)
 
 
-def room_list(request):
+def room_list(request) -> HttpResponse:
     rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
-    return render(request, "bookings/room_list.html", {"rooms": rooms_filtered.qs})
+    return render(
+        request,
+        "bookings/room_list.html",
+        {"filter": rooms_filtered, "rooms": rooms_filtered.qs},
+    )
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def book_room_api(request):
+def book_room_api(request) -> Response:
     serialized_booking = BookingSerializer(data=request.data)
     if serialized_booking.is_valid():
         serialized_booking.save(user=request.user)
@@ -49,7 +54,8 @@ def book_room_api(request):
     return Response(serialized_booking.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def book_room(request):
+@login_required
+def book_room(request, room_id=None) -> HttpResponse:
     if request.method == "POST":
         form = BookingForm(request.POST)
         if form.is_valid():
@@ -59,33 +65,37 @@ def book_room(request):
             messages.success(request, "Your room is booked!")
             return redirect("room_list")
     else:
-        form = BookingForm()
+        if room_id:
+            room = get_object_or_404(Room, id=room_id)
+            form = BookingForm({"room": room})
+        else:
+            form = BookingForm()
     return render(request, "bookings/book_room.html", {"form": form})
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def my_bookings_api(request):
+def my_bookings_api(request) -> Response:
     bookings = Booking.objects.filter(user=request.user)
     serialized_bookings = BookingSerializer(bookings, many=True)
     return Response(serialized_bookings.data)
 
 
 @login_required
-def my_bookings(request):
+def my_bookings(request) -> HttpResponse:
     user_bookings = Booking.objects.filter(user=request.user)
     return render(request, "bookings/my_bookings.html", {"bookings": user_bookings})
 
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
-def cancel_booking_api(request, pk):
+def cancel_booking_api(request, pk) -> Response:
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
     booking.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-def cancel_booking(request, pk):
+def cancel_booking(request, pk) -> HttpResponseRedirect:
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
     booking.delete()
     return redirect("my_bookings")
