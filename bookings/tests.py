@@ -1,9 +1,16 @@
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from .models import Room, Booking
 from .filters import RoomFilter
+from rest_framework.test import APIClient
+from rest_framework import status
+from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
+
+import concurrent.futures
+from django.db import connection
 
 
 class RoomFilterTest(TestCase):
@@ -97,10 +104,8 @@ class RoomFilterTest(TestCase):
         self.assertEqual(response.status_code, 200)
         # Expect the exact error message from clean()
         errors = response.context["form"].non_field_errors()
-        print(errors)
         self.assertIsNotNone(errors)
         # Ensure no new booking was created
-        print([[b.room, b.start_date, b.end_date] for b in Booking.objects.all()])
         self.assertEqual(Booking.objects.count(), 2)
 
     def test_booking_requires_login(self):
@@ -136,3 +141,129 @@ class RoomFilterTest(TestCase):
 
         # Booking should still exist
         self.assertTrue(Booking.objects.filter(pk=others_booking.pk).exists())
+
+
+class UserRegistrationAPITest(APITestCase):
+    def setUp(self) -> None:
+        self.url = reverse("api_register")
+        self.user_data = {
+            "username": "new_guest",
+            "password": "password123",
+        }
+
+    def test_registration_success(self) -> None:
+        response = self.client.post(self.url, data=self.user_data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().username, "new_guest")
+
+        # Ensure password is not returned
+        self.assertNotIn("password", response.data)
+
+    def test_registration_missing_fields(self) -> None:
+        incomplete_data = {"password": "password123"}
+        response = self.client.post(self.url, data=incomplete_data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+    def test_registration_duplicate_username(self) -> None:
+        # Create an existing user first
+        User.objects.create_user(username="new_guest", password="password")
+
+        response = self.client.post(self.url, data=self.user_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+
+class JWTLoginAPITest(APITestCase):
+    def setUp(self) -> None:
+        self.username = "test_user"
+        self.password = "secure_pass_123"
+        self.user = User.objects.create_user(
+            username=self.username, password=self.password
+        )
+        self.url = reverse("token_obtain_pair")
+
+    def test_login_success_returns_jwt(self) -> None:
+        data = {"username": self.username, "password": self.password}
+        response = self.client.post(self.url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check for 'access' and 'refresh' keys
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+    def test_login_invalid_password(self) -> None:
+        data = {"username": self.username, "password": "wrong_password"}
+        response = self.client.post(self.url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertNotIn("access", response.data)
+
+    def test_token_refresh(self) -> None:
+        login_data = {"username": self.username, "password": self.password}
+        login_response = self.client.post(self.url, login_data, format="json")
+        refresh_token = login_response.data["refresh"]
+
+        refresh_url = reverse("token_refresh")
+        refresh_response = self.client.post(
+            refresh_url, {"refresh": refresh_token}, format="json"
+        )
+
+        self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", refresh_response.data)
+
+
+class BookingRaceConditionTest(TransactionTestCase):
+    def setUp(self):
+        # Two distinct users
+        self.user1 = User.objects.create_user(username="raceuser1", password="password")
+        self.user2 = User.objects.create_user(username="raceuser2", password="password")
+
+        self.room = Room.objects.create(
+            name="testroom", price_per_night=1000, capacity=2
+        )
+        self.url = reverse("book_room_api")
+        self.payload = {
+            "room": self.room.id,
+            "start_date": "2026-08-10",
+            "end_date": "2026-08-15",
+        }
+
+    def test_concurrent_double_booking(self):
+        def make_request(user: User) -> int:
+            thread_client = APIClient()
+
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            thread_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+            response = thread_client.post(self.url, data=self.payload, format="json")
+            connection.close()
+            return response.status_code
+
+        # Fire two identical requests at the exact same time with different users
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            users = [self.user1, self.user2]
+            futures = [executor.submit(make_request, user) for user in users]
+            results = [
+                future.result() for future in concurrent.futures.as_completed(futures)
+            ]
+        self.assertIn(
+            status.HTTP_201_CREATED, results, "One request should have succeeded."
+        )
+        # I realised this will hardly ever give 409 during the test, because of the GIL
+        has_either_40x = (
+            status.HTTP_409_CONFLICT in results
+            or status.HTTP_400_BAD_REQUEST in results
+        )
+        self.assertTrue(has_either_40x, "The second should have returned a 409 or 400")
+
+        booking_count = Booking.objects.filter(room=self.room).count()
+        self.assertEqual(
+            booking_count,
+            1,
+            "The database should contain exactly 1 booking for this room.",
+        )

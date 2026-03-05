@@ -1,6 +1,18 @@
 from rest_framework import serializers
 from .models import Room, Booking
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ("username", "password")
+
+    def create(self, validated_data: dict) -> User:
+        return User.objects.create_user(**validated_data)
 
 
 class RoomSerializer(serializers.ModelSerializer):

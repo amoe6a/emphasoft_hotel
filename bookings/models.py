@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import RangeOperators
 
 
 # Create your models here.
@@ -19,6 +21,25 @@ class Booking(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     start_date = models.DateField()
     end_date = models.DateField()
+
+    class Meta:
+        constraints = [
+            ExclusionConstraint(
+                name="prevent_double_booking",
+                expressions=[
+                    ("room", "="),
+                    (
+                        models.Func(
+                            "start_date",
+                            "end_date",
+                            models.Value("[]"),
+                            function="daterange",
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+            )
+        ]
 
     @property
     def total_price(self) -> models.DecimalField:
