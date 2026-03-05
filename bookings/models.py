@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 
 # Create your models here.
@@ -22,3 +23,23 @@ class Booking(models.Model):
     @property
     def total_price(self) -> models.DecimalField:
         return self.room.price_per_night * (self.end_date - self.start_date).days
+
+    def clean(self):
+        super().clean()
+
+        if self.room and self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValidationError("Invalid dates range")
+
+            time_clashes = Booking.objects.filter(
+                room=self.room,
+                start_date__lte=self.end_date,
+                end_date__gte=self.start_date,
+            )
+
+            # if admin wants to modify the existing booking
+            if self.pk:
+                time_clashes = time_clashes.exclude(pk=self.pk)
+
+            if time_clashes.exists():
+                raise ValidationError("Room won't be fully available for these dates")
