@@ -67,11 +67,11 @@ WSGI_APPLICATION = "Hotel.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "hotel_booking_db",
-        "USER": "emphasoft",
-        "PASSWORD": "12345",
-        "HOST": "localhost",  # Or '127.0.0.1'
-        "PORT": "5432",
+        "NAME": os.getenv("DATABASE_NAME"),
+        "USER": os.getenv("USER"),
+        "PASSWORD": os.getenv("PASSWORD"),
+        "HOST": os.getenv("HOST"),  # Or '127.0.0.1'
+        "PORT": os.getenv("PORT"),
     }
 }
 db_from_env = dj_database_url.config(conn_max_age=600)
