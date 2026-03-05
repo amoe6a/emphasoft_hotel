@@ -5,12 +5,15 @@ from .models import Room, Booking
 from .forms import BookingForm
 from django.contrib.auth.forms import UserCreationForm
 from django.http import HttpResponse, HttpResponseRedirect
+from django.db.models import QuerySet
+from django.contrib.auth.models import User
 
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
-from .serializers import RoomSerializer, BookingSerializer
+from rest_framework import generics
+from rest_framework.request import Request
+from rest_framework.permissions import AllowAny
+from .serializers import RoomSerializer, BookingSerializer, UserRegistrationSerializer
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
@@ -31,35 +34,6 @@ def register(request) -> HttpResponse:
     return render(request, "registration/register.html", {"form": form})
 
 
-@extend_schema(
-    parameters=[
-        OpenApiParameter(
-            name="min_price",
-            type=float,
-            description="Filter by minimum price per night",
-        ),
-        OpenApiParameter(
-            name="max_price",
-            type=float,
-            description="Filter by maximum price per night",
-        ),
-        OpenApiParameter(
-            name="start_date", type=date, description="Filter by start_date"
-        ),
-        OpenApiParameter(
-            name="end_date", type=date, description="Filter by availability end_date"
-        ),
-    ],
-    responses={200: RoomSerializer(many=True)},
-    description="Search for available rooms within a price range and specific dates.",
-)
-@api_view(["GET"])
-def room_list_api(request) -> Response:
-    rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
-    serilized_rooms = RoomSerializer(rooms_filtered.qs, many=True)
-    return Response(serilized_rooms.data)
-
-
 def room_list(request) -> HttpResponse:
     rooms_filtered = RoomFilter(request.GET, queryset=Room.objects.all())
     return render(
@@ -67,21 +41,6 @@ def room_list(request) -> HttpResponse:
         "bookings/room_list.html",
         {"filter": rooms_filtered, "rooms": rooms_filtered.qs},
     )
-
-
-@extend_schema(
-    request=BookingSerializer,
-    responses={201: BookingSerializer},
-    description="Allows authenticated user to book a room. Requires room id and date range.",
-)
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def book_room_api(request) -> Response:
-    serialized_booking = BookingSerializer(data=request.data)
-    if serialized_booking.is_valid():
-        serialized_booking.save(user=request.user)
-        return Response(serialized_booking.data, status=status.HTTP_201_CREATED)
-    return Response(serialized_booking.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @login_required
@@ -103,46 +62,104 @@ def book_room(request, room_id=None) -> HttpResponse:
     return render(request, "bookings/book_room.html", {"form": form})
 
 
-@extend_schema(
-    responses={200: BookingSerializer(many=True)},
-    description="Retrieves a list of all bookings made by the currently authenticated user.",
-    tags=["User Bookings"],
-)
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def my_bookings_api(request) -> Response:
-    bookings = Booking.objects.filter(user=request.user)
-    serialized_bookings = BookingSerializer(bookings, many=True)
-    return Response(serialized_bookings.data)
-
-
 @login_required
 def my_bookings(request) -> HttpResponse:
     user_bookings = Booking.objects.filter(user=request.user)
     return render(request, "bookings/my_bookings.html", {"bookings": user_bookings})
 
 
-@extend_schema(
-    parameters=[
-        OpenApiParameter(
-            name="pk",
-            description="The unique ID of the booking to cancel",
-            type=int,
-            location=OpenApiParameter.PATH,
-        )
-    ],
-    responses={204: None},
-    description="Deletes a booking record. Users can only delete their own bookings.",
-)
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
-def cancel_booking_api(request, pk) -> Response:
-    booking = get_object_or_404(Booking, pk=pk, user=request.user)
-    booking.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 def cancel_booking(request, pk) -> HttpResponseRedirect:
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
     booking.delete()
     return redirect("my_bookings")
+
+
+class RegisterAPIView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserRegistrationSerializer
+    permission_classes = [AllowAny]
+
+    @extend_schema(description="Creates a new user account via JSON payload.")
+    def post(self, request, *args, **kwargs) -> Response:
+        return super().post(request, *args, **kwargs)
+
+
+class RoomListAPIView(generics.ListAPIView):
+    serializer_class = RoomSerializer
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="min_price",
+                type=float,
+                description="Filter by minimum price per night",
+            ),
+            OpenApiParameter(
+                name="max_price",
+                type=float,
+                description="Filter by maximum price per night",
+            ),
+            OpenApiParameter(
+                name="start_date", type=date, description="Filter by start_date"
+            ),
+            OpenApiParameter(
+                name="end_date", type=date, description="Filter by end_date"
+            ),
+        ],
+        description="Search for available rooms within a price range and specific dates.",
+    )
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self) -> QuerySet[Room]:
+        return RoomFilter(self.request.GET, queryset=Room.objects.all()).qs
+
+
+class BookRoomAPIView(generics.CreateAPIView):
+    serializer_class = BookingSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        description="Allows authenticated user to book a room. Requires room id and date range."
+    )
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        return super().post(request, *args, **kwargs)
+
+    def perform_create(self, serializer: BookingSerializer) -> None:
+        serializer.save(user=self.request.user)
+
+
+class MyBookingsAPIView(generics.ListAPIView):
+    serializer_class = BookingSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        description="Retrieves a list of all bookings made by the currently authenticated user.",
+        tags=["User Bookings"],
+    )
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self) -> QuerySet[Booking]:
+        return Booking.objects.filter(user=self.request.user)
+
+
+class CancelBookingAPIView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="pk",
+                description="The unique ID of the booking to cancel",
+                type=int,
+                location=OpenApiParameter.PATH,
+            )
+        ],
+        description="Deletes a booking record. Users can only delete their own bookings.",
+    )
+    def delete(self, request: Request, *args, **kwargs) -> Response:
+        return super().delete(request, *args, **kwargs)
+
+    def get_queryset(self) -> QuerySet[Booking]:
+        return Booking.objects.filter(user=self.request.user)

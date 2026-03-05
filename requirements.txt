@@ -31,6 +31,7 @@ django==6.0.2 \
     #   django-filter
     #   djangohotel
     #   djangorestframework
+    #   djangorestframework-simplejwt
     #   drf-spectacular
 django-debug-toolbar==6.2.0 \
     --hash=sha256:1575461954e6befa720e999dec13fe4f1cc8baf40b6c3ac2aec5f340c0f9c85f \
@@ -44,7 +45,12 @@ djangorestframework==3.16.1 \
     --hash=sha256:33a59f47fb9c85ede792cbf88bde71893bcda0667bc573f784649521f1102cec
     # via
     #   djangohotel
+    #   djangorestframework-simplejwt
     #   drf-spectacular
+djangorestframework-simplejwt==5.5.1 \
+    --hash=sha256:2c30f3707053d384e9f315d11c2daccfcb548d4faa453111ca19a542b732e469 \
+    --hash=sha256:e72c5572f51d7803021288e2057afcbd03f17fe11d484096f40a460abc76e87f
+    # via djangohotel
 drf-spectacular==0.29.0 \
     --hash=sha256:0a069339ea390ce7f14a75e8b5af4a0860a46e833fd4af027411a3e94fc1a0cc \
     --hash=sha256:d1ee7c9535d89848affb4427347f7c4a22c5d22530b8842ef133d7b72e19b41a
@@ -128,6 +134,10 @@ psycopg2-binary==2.9.11 \
     --hash=sha256:fa0f693d3c68ae925966f0b14b8edda71696608039f4ed61b1fe9ffa468d16db \
     --hash=sha256:fcf21be3ce5f5659daefd2b3b3b6e4727b028221ddc94e6c1523425579664747
     # via djangohotel
+pyjwt==2.11.0 \
+    --hash=sha256:35f95c1f0fbe5d5ba6e43f00271c275f7a1a4db1dab27bf708073b75318ea623 \
+    --hash=sha256:94a6bde30eb5c8e04fee991062b534071fd1439ef58d2adc9ccb823e7bcd0469
+    # via djangorestframework-simplejwt
 python-discovery==1.1.0 \
     --hash=sha256:447941ba1aed8cc2ab7ee3cb91be5fc137c5bdbb05b7e6ea62fbdcb66e50b268 \
     --hash=sha256:a162893b8809727f54594a99ad2179d2ede4bf953e12d4c7abc3cc9cdbd1437b
