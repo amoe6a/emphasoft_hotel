@@ -184,7 +184,7 @@ class JWTLoginAPITest(APITestCase):
         self.user = User.objects.create_user(
             username=self.username, password=self.password
         )
-        self.url = reverse("token_obtain_pair")
+        self.url = reverse("api_login")
 
     def test_login_success_returns_jwt(self) -> None:
         data = {"username": self.username, "password": self.password}
@@ -214,6 +214,51 @@ class JWTLoginAPITest(APITestCase):
 
         self.assertEqual(refresh_response.status_code, status.HTTP_200_OK)
         self.assertIn("access", refresh_response.data)
+
+
+class JWTLogoutAPITest(APITestCase):
+    def setUp(self) -> None:
+        self.username = "tst"
+        self.password = "pass"
+        self.user = User.objects.create_user(
+            username=self.username, password=self.password
+        )
+        self.login_url = reverse("api_login")
+        self.logout_url = reverse("token_blacklist")
+        self.refresh_url = reverse("token_refresh")
+
+    def test_logout_success_blacklists_token(self) -> None:
+        login_res = self.client.post(
+            self.login_url,
+            {"username": self.username, "password": self.password},
+            format="json",
+        )
+
+        refresh_token = login_res.data["refresh"]
+        access_token = login_res.data["access"]
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+        logout_res = self.client.post(
+            self.logout_url, {"refresh": refresh_token}, format="json"
+        )
+
+        self.assertEqual(logout_res.status_code, status.HTTP_200_OK)
+
+        # should fail as the token is blacklisted
+        refresh_res = self.client.post(
+            self.refresh_url, {"refresh": refresh_token}, format="json"
+        )
+
+        self.assertEqual(refresh_res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(refresh_res.data["detail"], "Token is blacklisted")
+
+    def test_logout_with_invalid_token(self) -> None:
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            self.logout_url, {"refresh": "not-a-real-token"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class BookingRaceConditionTest(TransactionTestCase):

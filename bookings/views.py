@@ -146,17 +146,11 @@ class MyBookingsAPIView(generics.ListAPIView):
 
 class CancelBookingAPIView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = BookingSerializer
 
     @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="pk",
-                description="The unique ID of the booking to cancel",
-                type=int,
-                location=OpenApiParameter.PATH,
-            )
-        ],
         description="Deletes a booking record. Users can only delete their own bookings.",
+        responses={204: None},
     )
     def delete(self, request: Request, *args, **kwargs) -> Response:
         return super().delete(request, *args, **kwargs)
